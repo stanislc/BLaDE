@@ -416,6 +416,7 @@ void parse_msld(char *line,System *system)
     system->msld->new_implicit=io_nextb(line);
   } else if (strcmp(token, "well_width")==0){
     system->msld->well_width=io_nextf(line);
+#warning "No units on width or k"
   } else if (strcmp(token, "well_k")==0){
     system->msld->well_k=io_nextf(line);
   } else if (strcmp(token,"print")==0) {
@@ -1217,11 +1218,11 @@ void getforce_atomRestraintsT(System *system,box_type box,bool calcEnergy)
   Msld *m=system->msld;
   int shMem=0;
 
-  if (r->calcTermFlag[eebias]==false) return;
+  if (r->calcTermFlag[eecats]==false) return;
 
   if (calcEnergy) {
     shMem=BLMS*sizeof(real)/32;
-    pEnergy=s->energy_d+eebias;
+    pEnergy=s->energy_d+eecats;
   }
   if (system->run) {
     stream=system->run->biaspotStream;
@@ -1432,7 +1433,7 @@ void blade_add_msld_thetaindebias(System *system,int sites,int i,double k)
   system->msld->kThetaIndeBias[i-1]=k;
 }
 
-void blade_set_msld_piecewise_constraint(System *system, int do_imp, real width, real k)
+void blade_set_msld_piecewise_constraint(System *system, int do_imp, double width, double k)
 {
   system+=omp_get_thread_num();
   system->msld->new_implicit=do_imp;

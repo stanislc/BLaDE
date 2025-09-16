@@ -31,6 +31,10 @@ Structure::Structure() {
   noeList.clear();
   harmCount=0;
   harmList.clear();
+  boRestCount=0;
+  boRestList.clear();
+  anRestCount=0;
+  anRestList.clear();
   diRestCount=0;
   diRestList.clear();
 
@@ -288,6 +292,7 @@ void Structure::parse_diRest(char *line,char *token,System *system)
     dr.kphi=io_nextf(line)*KCAL_MOL;
     dr.phi0=io_nextf(line)*DEGREES;
     dr.nphi=io_nexti(line);
+    dr.block=0; // Assume dihedral restraint is not scaled by lambda
     diRestList.push_back(dr);
     }
   diRestCount=diRestList.size();
@@ -720,7 +725,34 @@ void blade_add_harmonic(System *system,int i,double k,double x0,double y0,double
   system->structure->harmCount=system->structure->harmList.size();
 }
 
-void blade_add_diRest(System *system,int i,int j,int k,int l,double kphi,double phi0,int nphi)
+void blade_add_borest(System *system,int i,int j,double kr,double r0,int lambdaBlock)
+{
+  system+=omp_get_thread_num();
+  struct BoRestPotential br;
+  br.idx[0]=i-1;
+  br.idx[1]=j-1;
+  br.kr=kr*(KCAL_MOL/ANGSTROM/ANGSTROM);
+  br.r0=r0*ANGSTROM;
+  br.block=lambdaBlock-1;
+  system->structure->boRestList.push_back(br);
+  system->structure->boRestCount=system->structure->boRestList.size();
+}
+
+void blade_add_anrest(System *system,int i,int j,int k,double kt,double t0,int lambdaBlock)
+{
+  system+=omp_get_thread_num();
+  struct AnRestPotential ar;
+  ar.idx[0]=i-1;
+  ar.idx[1]=j-1;
+  ar.idx[2]=k-1;
+  ar.kt=kt*KCAL_MOL;
+  ar.t0=t0*DEGREES;
+  ar.block=lambdaBlock-1;
+  system->structure->anRestList.push_back(ar);
+  system->structure->anRestCount=system->structure->anRestList.size();
+}
+
+void blade_add_direst(System *system,int i,int j,int k,int l,double kphi,int nphi,double phi0,int lambdaBlock)
 {
   system+=omp_get_thread_num();
   struct DiRestPotential dr;
@@ -731,6 +763,7 @@ void blade_add_diRest(System *system,int i,int j,int k,int l,double kphi,double 
   dr.kphi=kphi*KCAL_MOL;
   dr.phi0=phi0*DEGREES;
   dr.nphi = nphi;
+  dr.block=lambdaBlock-1;
   system->structure->diRestList.push_back(dr);
   system->structure->diRestCount=system->structure->diRestList.size();
 }
