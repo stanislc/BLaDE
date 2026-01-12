@@ -125,12 +125,27 @@ void State::min_move(int step,int nsteps,System *system)
       recv_energy();
       if (system->verbose>0) display_nrg(system);
       currEnergy=energy[eepotential];
+
+      // Check for NaN/Inf energy
+      if (!isfinite(currEnergy)) {
+        fatal(__FILE__,__LINE__,"BLaDE minimization: energy is NaN or Inf at step %d. Check structure or parameters.",step);
+      }
+
+      // Compute deltaE before updating prevEnergy
+      real_e deltaE = currEnergy - prevEnergy;
+
       if (step==0) {
         r->dxRMS=r->dxRMSInit;
-      } else if (currEnergy<prevEnergy) {
-        r->dxRMS*=1.2;
       } else {
+        // Adaptive damping: always halve first, then conditionally increase
         r->dxRMS*=0.5;
+        if (currEnergy<prevEnergy) {
+          r->dxRMS*=2.4; // scale factor for energy decrease
+        }
+        // Cap dxRMS to prevent unbounded growth (10x initial value)
+        if (r->dxRMS > 10.0 * r->dxRMSInit) {
+          r->dxRMS = 10.0 * r->dxRMSInit;
+        }
       }
       prevEnergy=currEnergy;
       sd_acceleration_kernel<<<(3*atomCount+BLUP-1)/BLUP,BLUP,
@@ -141,13 +156,26 @@ void State::min_move(int step,int nsteps,System *system)
         (atomCount,*leapState,grads2_d);
       cudaMemcpy(grads2,grads2_d,2*sizeof(real_e),cudaMemcpyDeviceToHost);
       cudaMemset(grads2_d,0,2*sizeof(real_e));
-      fprintf(stdout,"rmsgrad = %f\n",sqrt(grads2[0]));
-      fprintf(stdout,"maxgrad = %f\n",sqrt(grads2[1]));
+      real gradRMS = sqrt(grads2[0]);
+      real gradMax = sqrt(grads2[1]);
+
+      // Adaptive MINI> output
+      if (step % r->nprint == 0 && system->verbose >= 1) {
+        fprintf(stdout,"MINI> %6d %14.6f %14.6f %14.6f\n", step, currEnergy, deltaE, gradRMS);
+      }
+
+      // Detailed debug output
+      if (system->verbose > 1) {
+        fprintf(stdout,"rmsgrad = %f\n",gradRMS);
+        fprintf(stdout,"maxgrad = %f\n",gradMax);
+      }
       // scaling factor to achieve desired rms displacement
-      scaling=r->dxRMS/sqrt(grads2[0]);
+      scaling=r->dxRMS/gradRMS;
       // ratio of allowed maximum displacement over actual maximum displacement
-      rescaling=r->dxAtomMax/(scaling*sqrt(grads2[1]));
-      fprintf(stdout,"scaling = %f, rescaling = %f\n",scaling,rescaling);
+      rescaling=r->dxAtomMax/(scaling*gradMax);
+      if (system->verbose > 1) {
+        fprintf(stdout,"scaling = %f, rescaling = %f\n",scaling,rescaling);
+      }
       // decrease scaling factor if actual max violates allowed max
       if (rescaling<1) {
         scaling*=rescaling;
@@ -161,9 +189,21 @@ void State::min_move(int step,int nsteps,System *system)
     if (system->id==0) {
       recv_energy();
       if (system->verbose>0) display_nrg(system);
+      currEnergy=energy[eepotential];
+
+      // Check for NaN/Inf energy
+      if (!isfinite(currEnergy)) {
+        fatal(__FILE__,__LINE__,"BLaDE minimization (SDFD): energy is NaN or Inf at step %d. Check structure or parameters.",step);
+      }
+
+      // Compute deltaE before updating prevEnergy
+      real_e deltaE = currEnergy - prevEnergy;
+
       if (step==0) {
         r->dxRMS=r->dxRMSInit;
       }
+      prevEnergy=currEnergy;
+
       sd_acceleration_kernel<<<(3*atomCount+BLUP-1)/BLUP,BLUP,
         0,r->updateStream>>>(3*atomCount,*leapState);
       holonomic_velocity(system);
@@ -173,13 +213,26 @@ void State::min_move(int step,int nsteps,System *system)
         (atomCount,*leapState,grads2_d);
       cudaMemcpy(grads2,grads2_d,2*sizeof(real_e),cudaMemcpyDeviceToHost);
       cudaMemset(grads2_d,0,2*sizeof(real_e));
-      fprintf(stdout,"rmsgrad = %f\n",sqrt(grads2[0]));
-      fprintf(stdout,"maxgrad = %f\n",sqrt(grads2[1]));
+      real gradRMS = sqrt(grads2[0]);
+      real gradMax = sqrt(grads2[1]);
+
+      // Adaptive MINI> output
+      if (step % r->nprint == 0 && system->verbose >= 1) {
+        fprintf(stdout,"MINI> %6d %14.6f %14.6f %14.6f\n", step, currEnergy, deltaE, gradRMS);
+      }
+
+      // Detailed debug output
+      if (system->verbose > 1) {
+        fprintf(stdout,"rmsgrad = %f\n",gradRMS);
+        fprintf(stdout,"maxgrad = %f\n",gradMax);
+      }
       // scaling factor to achieve desired rms displacement
-      scaling=r->dxRMS/sqrt(grads2[0]);
+      scaling=r->dxRMS/gradRMS;
       // ratio of allowed maximum displacement over actual maximum displacement
-      rescaling=r->dxAtomMax/(scaling*sqrt(grads2[1]));
-      fprintf(stdout,"scaling = %f, rescaling = %f\n",scaling,rescaling);
+      rescaling=r->dxAtomMax/(scaling*gradMax);
+      if (system->verbose > 1) {
+        fprintf(stdout,"scaling = %f, rescaling = %f\n",scaling,rescaling);
+      }
       // decrease scaling factor if actual max violates allowed max
       if (rescaling<1) {
         scaling*=rescaling;
@@ -203,13 +256,19 @@ void State::min_move(int step,int nsteps,System *system)
       cudaMemset(grads2_d,0,2*sizeof(real_e));
       // grads2[0] is F*F, gradDot is F*Fnew
       frac=grads2[0]/(grads2[0]-gradDot[0]);
-      fprintf(stdout,"F(x0)*dx = %f, F(x0+dx)*dx = %f, frac = %f\n",grads2[0],gradDot[0],frac);
+      if (system->verbose > 1) {
+        fprintf(stdout,"F(x0)*dx = %f, F(x0+dx)*dx = %f, frac = %f\n",grads2[0],gradDot[0],frac);
+      }
       if (frac>1.44 || frac<0) {
         r->dxRMS*=1.2;
       } else if (frac<0.25) {
         r->dxRMS*=0.5;
       } else {
         r->dxRMS*=sqrt(frac);
+      }
+      // Cap dxRMS to prevent unbounded growth (10x initial value)
+      if (r->dxRMS > 10.0 * r->dxRMSInit) {
+        r->dxRMS = 10.0 * r->dxRMSInit;
       }
       frac*=(nsteps-step)/(1.0*nsteps);
       if (frac>1 || frac<0) frac=1;

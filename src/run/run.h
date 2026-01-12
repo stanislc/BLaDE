@@ -55,6 +55,7 @@ class Run {
   real dxRMSInit;
   real dxRMS;
   EMin minType; // minimization scheme
+  int nprint; // print frequency for minimization (MINI> output)
 
   real betaEwald;
   real rCut;

@@ -71,6 +71,7 @@ Run::Run(System *system)
   dxRMSInit=0.05*ANGSTROM;
   dxRMS=dxRMSInit;
   minType=esd; // enum steepest descent
+  nprint=50; // print frequency for MINI> output
 
   domdecHeuristic=true;
 
@@ -269,6 +270,7 @@ void Run::dump(char *line,char *token,System *system)
   fprintf(stdout,"RUN PRINT> dxatommax=%f (Maximum minimization atom displacement in A)\n",dxAtomMax/ANGSTROM);
   fprintf(stdout,"RUN PRINT> dxrmsinit=%f (Starting minimization rms displacement in A)\n",dxRMSInit/ANGSTROM);
   fprintf(stdout,"RUN PRINT> mintype=%d (minimization algorithm. 0 is steepest descent, etc)\n",minType);
+  fprintf(stdout,"RUN PRINT> nprint=%d (print frequency for MINI> output)\n",nprint);
   fprintf(stdout,"RUN PRINT> domdecheuristic=%d (use heuristics for domdec limits without checking their validity)\n",(int)domdecHeuristic);
 #ifdef REPLICAEXCHANGE
   fprintf(stdout,"RUN PRINT> fnmrex=%s (file name for replica exchange)\n",fnmREx.c_str());
@@ -366,6 +368,8 @@ void Run::set_variable(char *line,char *token,System *system)
     } else {
       fatal(__FILE__,__LINE__,"Unrecognized token %s for minimization type minType. Options are: sd or sdfd\n",minString.c_str());
     }
+  } else if (strcmp(token,"nprint")==0) {
+    nprint=io_nexti(line);
   } else if (strcmp(token,"domdecheuristic")==0) {
     domdecHeuristic=io_nextb(line);
 #ifdef REPLICAEXCHANGE
