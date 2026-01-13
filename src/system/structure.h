@@ -113,7 +113,7 @@ extern "C" {
   void blade_add_harmonic(System *system,int i,double k,double x0,double y0,double z0,double n);
   void blade_add_borest(System *system,int i,int j,double kr,double r0,int lambdaBlock);
   void blade_add_anrest(System *system,int i,int j,int k,double kt,double t0,int lambdaBlock);
-  void blade_add_direst(System *system,int i,int j,int k,int l,double kphi,int nphi,double phi0,int lambdaBlock);
+  void blade_add_direst(System *system,int i,int j,int k,int l,double kphi,int nphi,double phi0,double width,int lambdaBlock);
 }
 
 #endif

@@ -350,7 +350,10 @@ __device__ void function_torsion(DiRestPotential dr,real phi,real *fphi,real *lE
 {
   real dphi;
   if (dr.nphi>0) {
-    dphi=dr.nphi*phi-dr.phi0;
+    // Periodic potential: E = kphi * (1 - cos(nphi*(phi - phi0)))
+    // CHARMM CONS DIHE formula: E = K*(1+cos(n*phi - phi0)) where phi0 = n*phimin + PI
+    // Since BLaDE receives phimin directly: E = K*(1 - cos(n*(phi - phimin)))
+    dphi=dr.nphi*(phi-dr.phi0);
     dphi-=(2*((real)M_PI))*floor((dphi+((real)M_PI))/(2*((real)M_PI)));
     fphi[0]=dr.kphi*dr.nphi*sinf(dphi);
     if (calcEnergy) {
@@ -358,11 +361,25 @@ __device__ void function_torsion(DiRestPotential dr,real phi,real *fphi,real *lE
     }
   }
   else {
+    // Harmonic with optional flat-bottom: E = kphi * max(0, |dphi| - width)^2
+    // CHARMM uses E = K*(phi-phi0)^2 (no 0.5 factor), so dE/dphi = 2*K*(phi-phi0)
     dphi=phi-dr.phi0;
     dphi-=(2*((real)M_PI))*floor((dphi+((real)M_PI))/(2*((real)M_PI)));
-    fphi[0]=dr.kphi*dphi;
-    if (calcEnergy) {
-      lE[0]=((real)0.5)*dr.kphi*dphi*dphi;
+    // Apply flat-bottom if width > 0
+    if (dr.width>0 && fabsf(dphi)<=dr.width) {
+      // Inside flat region - no force or energy
+      fphi[0]=0;
+      if (calcEnergy) lE[0]=0;
+    } else {
+      // Outside flat region - apply harmonic from edge
+      real effective_dphi=dphi;
+      if (dr.width>0) {
+        effective_dphi=(dphi>0)?(dphi-dr.width):(dphi+dr.width);
+      }
+      fphi[0]=2*dr.kphi*effective_dphi;
+      if (calcEnergy) {
+        lE[0]=dr.kphi*effective_dphi*effective_dphi;
+      }
     }
   }
 }

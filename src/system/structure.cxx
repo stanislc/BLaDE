@@ -752,7 +752,7 @@ void blade_add_anrest(System *system,int i,int j,int k,double kt,double t0,int l
   system->structure->anRestCount=system->structure->anRestList.size();
 }
 
-void blade_add_direst(System *system,int i,int j,int k,int l,double kphi,int nphi,double phi0,int lambdaBlock)
+void blade_add_direst(System *system,int i,int j,int k,int l,double kphi,int nphi,double phi0,double width,int lambdaBlock)
 {
   system+=omp_get_thread_num();
   struct DiRestPotential dr;
@@ -762,6 +762,7 @@ void blade_add_direst(System *system,int i,int j,int k,int l,double kphi,int nph
   dr.idx[3]=l-1;
   dr.kphi=kphi*KCAL_MOL;
   dr.phi0=phi0*DEGREES;
+  dr.width=width*DEGREES;  // flat-bottom half-width in radians (default 0)
   dr.nphi = nphi;
   dr.block=lambdaBlock-1;
   system->structure->diRestList.push_back(dr);

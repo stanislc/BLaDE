@@ -188,6 +188,7 @@ struct DiRestPotential {
   real kphi;
   int nphi;
   real phi0;
+  real width;  // flat-bottom half-width in radians (default 0 = pure harmonic)
   int block;
 };
 
