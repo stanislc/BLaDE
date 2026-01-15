@@ -48,8 +48,10 @@ Run::Run(System *system)
   betaEwald=1/(3.2*ANGSTROM); // rCut=10*ANGSTROM, erfc(betaEwald*rCut)=1e-5
   rCut=10*ANGSTROM;
   rSwitch=8.5*ANGSTROM;
-  vfSwitch=true;
-  usePME=true;
+  vfSwitch=true;      // backward compatibility
+  vdwMethod=evfswitch; // default to VFSWITCH (force switching)
+  elecMethod=epme;    // default to PME
+  usePME=true;        // backward compatibility
   gridSpace=1.0*ANGSTROM;
   grid[0]=-1;
   grid[1]=-1;
