@@ -85,6 +85,7 @@ if [ ! -f "Makefile" ] || $RECONFIGURE; then
     echo "Configuring: UNITS=${UNITS}, PRECISION=${PRECISION}"
     cmake -DUNITS="${UNITS}" \
           -DPRECISION="${PRECISION}" \
+          -DBLADE_STANDALONE=ON \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX}" \
           ../src
