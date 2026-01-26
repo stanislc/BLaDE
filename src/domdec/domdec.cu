@@ -1,6 +1,7 @@
 #include <cuda_runtime.h>
 
 #include "domdec/domdec.h"
+#include "main/blade_log.h"
 #include "system/system.h"
 #include "system/state.h"
 #include "run/run.h"
@@ -110,7 +111,9 @@ void Domdec::initialize(System *system)
   // If each column has one empty block at the end, there cannot be more blocks than the number of atoms divided into 32 plus one for each column
   maxBlocks=(globalCount/32+1)+(idCount*domainDiv.x*domainDiv.y);
   if (system->verbose>0) {
-    fprintf(stdout,"maxBlocks=%d\n",maxBlocks);
+    char buf[256];
+    snprintf(buf, sizeof(buf), "maxBlocks=%d\n", maxBlocks);
+    blade_log(buf);
   }
 
   // Set maxPartnersPerBlock
@@ -120,8 +123,11 @@ void Domdec::initialize(System *system)
   // maxPartnersPerBlock=2*((int)(edge*edge*edge/(32*invDensity)));
   maxPartnersPerBlock=3*((int)(edge*edge*edge/(32*invDensity)));
   if (system->verbose>0) {
-    fprintf(stdout,"The following parameters are set heuristically at %s:%d, and can cause errors if set too low\n",__FILE__,__LINE__);
-    fprintf(stdout,"maxPartnersPerBlock=%d\n",maxPartnersPerBlock);
+    char buf[256];
+    snprintf(buf, sizeof(buf), "The following parameters are set heuristically at %s:%d, and can cause errors if set too low\n", __FILE__, __LINE__);
+    blade_log(buf);
+    snprintf(buf, sizeof(buf), "maxPartnersPerBlock=%d\n", maxPartnersPerBlock);
+    blade_log(buf);
   }
 
   freqDomdec=10;
@@ -129,9 +135,13 @@ void Domdec::initialize(System *system)
   cullPad=2*sqrt(30*kB*system->run->T/1)*freqDomdec*system->run->dt;
   maxBlockExclCount=(4*system->potential->exclCount+1024)/32; // only 32*exclCount is guaranteed, and that only if the box is large. Allocate dynamically
   if (system->verbose>0) {
-    fprintf(stdout,"freqDomdec=%d (how many steps before domain reset)\n",freqDomdec);
-    fprintf(stdout,"cullPad=%g (spatial padding for considering which blocks could interact\n",cullPad);
-    fprintf(stdout,"maxBlockExclCount=%d (can reallocate dynamically with \"run setvariable domdecheuristic off\")\n",maxBlockExclCount);
+    char buf[256];
+    snprintf(buf, sizeof(buf), "freqDomdec=%d (how many steps before domain reset)\n", freqDomdec);
+    blade_log(buf);
+    snprintf(buf, sizeof(buf), "cullPad=%g (spatial padding for considering which blocks could interact\n", cullPad);
+    blade_log(buf);
+    snprintf(buf, sizeof(buf), "maxBlockExclCount=%d (can reallocate dynamically with \"run setvariable domdecheuristic off\")\n", maxBlockExclCount);
+    blade_log(buf);
   }
 
   domain=(int*)calloc(globalCount,sizeof(int));
