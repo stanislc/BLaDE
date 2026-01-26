@@ -361,7 +361,6 @@ void Parameters::add_parameter_cmaps(FILE *fp)
         fatal(__FILE__,__LINE__,"CMAP grid is greater than 60 points per 360 degrees (%d). Have you really thought about how much memory that will take?\n",cp.ngrid);
       }
       cp.kcmap=(real*)calloc(cp.ngrid*cp.ngrid,sizeof(real));
-    fprintf(stdout,"allocating kcmap=%p\n",cp.kcmap);
 
       for (i=0; i<cp.ngrid; i++) {
         for (j=0; j<cp.ngrid; j++) {
@@ -710,7 +709,9 @@ void blade_add_parameter_cmaps(System *system,
   }
   system+=omp_get_thread_num();
   cp.kcmap=(real*)calloc(cp.ngrid*cp.ngrid,sizeof(real));
-  fprintf(stdout,"allocating kcmap=%p\n",cp.kcmap);
+  if (system->verbose>0) {
+    fprintf(stdout,"allocating kcmap=%p\n",cp.kcmap);
+  }
   system->parameters->cmapParameter[name]=cp;
 }
 

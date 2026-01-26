@@ -123,7 +123,7 @@ void State::min_move(int step,int nsteps,System *system)
   if (r->minType==esd) {
     if (system->id==0) {
       recv_energy();
-      if (system->verbose>0) display_nrg(system);
+      if (system->verbose>1) display_nrg(system);
       currEnergy=energy[eepotential];
 
       // Check for NaN/Inf energy
@@ -188,7 +188,7 @@ void State::min_move(int step,int nsteps,System *system)
   } else if (r->minType==esdfd) {
     if (system->id==0) {
       recv_energy();
-      if (system->verbose>0) display_nrg(system);
+      if (system->verbose>1) display_nrg(system);
       currEnergy=energy[eepotential];
 
       // Check for NaN/Inf energy

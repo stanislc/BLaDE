@@ -1081,7 +1081,9 @@ void Potential::initialize(System *system)
     } else {
       gridDimPME[i]=system->run->grid[i];
     }
-    fprintf(stdout,"PME grid(%d) size: %d\n",i,gridDimPME[i]);
+    if (system->verbose>0) {
+      fprintf(stdout,"PME grid(%d) size: %d\n",i,gridDimPME[i]);
+    }
   }
 
   cudaMalloc(&chargeGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal));

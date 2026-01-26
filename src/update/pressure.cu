@@ -128,7 +128,7 @@ void pressure_coupling(System *system)
     energyOld=s->energy[eepotential];
 
     // and print it
-    if (system->verbose>0) display_nrg(system);
+    if (system->verbose>1) display_nrg(system);
 
     s->backup_position();
 
@@ -155,21 +155,21 @@ void pressure_coupling(System *system)
     energyNew=s->energy[eepotential];
 
     // and print it
-    if (system->verbose>0) display_nrg(system);
+    if (system->verbose>1) display_nrg(system);
 
     // Compare energy
     N=s->atomCount-(2*p->triangleConsCount+p->branch1ConsCount+2*p->branch2ConsCount+3*p->branch3ConsCount);
     kT=s->leapParms1->kT;
     dW=energyNew-energyOld+r->pressure*(volumeNew-volumeOld)-N*kT*log(volumeNew/volumeOld);
-    if (system->verbose>0) {
+    if (system->verbose>1) {
       fprintf(stdout,"dW= %f, dV= %f\n",dW,volumeNew-volumeOld);
     }
     if (system->rngCPU->rand_uniform()<exp(-dW/kT)) { // accept move
-      if (system->verbose>0) {
+      if (system->verbose>1) {
         fprintf(stdout,"Volume move accepted. New volume=%f\n",volumeNew);
       }
     } else {
-      if (system->verbose>0) {
+      if (system->verbose>1) {
         fprintf(stdout,"Volume move rejected. Old volume=%f\n",volumeOld);
       }
       s->restore_position();

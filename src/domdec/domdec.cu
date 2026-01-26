@@ -109,7 +109,9 @@ void Domdec::initialize(System *system)
   domainDiv.y=(int)ceil(box.y/(approxBlockBox*gridDomdec.y));
   // If each column has one empty block at the end, there cannot be more blocks than the number of atoms divided into 32 plus one for each column
   maxBlocks=(globalCount/32+1)+(idCount*domainDiv.x*domainDiv.y);
-  fprintf(stdout,"maxBlocks=%d\n",maxBlocks);
+  if (system->verbose>0) {
+    fprintf(stdout,"maxBlocks=%d\n",maxBlocks);
+  }
 
   // Set maxPartnersPerBlock
   real edge=3*approxBlockBox+2*system->run->cutoffs.rCut;
@@ -117,16 +119,20 @@ void Domdec::initialize(System *system)
 // #warning "Increased maxPartnersPerBlock"
   // maxPartnersPerBlock=2*((int)(edge*edge*edge/(32*invDensity)));
   maxPartnersPerBlock=3*((int)(edge*edge*edge/(32*invDensity)));
-  fprintf(stdout,"The following parameters are set heuristically at %s:%d, and can cause errors if set too low\n",__FILE__,__LINE__);
-  fprintf(stdout,"maxPartnersPerBlock=%d\n",maxPartnersPerBlock);
+  if (system->verbose>0) {
+    fprintf(stdout,"The following parameters are set heuristically at %s:%d, and can cause errors if set too low\n",__FILE__,__LINE__);
+    fprintf(stdout,"maxPartnersPerBlock=%d\n",maxPartnersPerBlock);
+  }
 
   freqDomdec=10;
   // How far two particles, each with hydrogen/unit mass can get in freqDomdec timesteps, if each has 30 kT of kinetic energy. Incredibly rare to violate this.
   cullPad=2*sqrt(30*kB*system->run->T/1)*freqDomdec*system->run->dt;
   maxBlockExclCount=(4*system->potential->exclCount+1024)/32; // only 32*exclCount is guaranteed, and that only if the box is large. Allocate dynamically
-  fprintf(stdout,"freqDomdec=%d (how many steps before domain reset)\n",freqDomdec);
-  fprintf(stdout,"cullPad=%g (spatial padding for considering which blocks could interact\n",cullPad);
-  fprintf(stdout,"maxBlockExclCount=%d (can reallocate dynamically with \"run setvariable domdecheuristic off\")\n",maxBlockExclCount);
+  if (system->verbose>0) {
+    fprintf(stdout,"freqDomdec=%d (how many steps before domain reset)\n",freqDomdec);
+    fprintf(stdout,"cullPad=%g (spatial padding for considering which blocks could interact\n",cullPad);
+    fprintf(stdout,"maxBlockExclCount=%d (can reallocate dynamically with \"run setvariable domdecheuristic off\")\n",maxBlockExclCount);
+  }
 
   domain=(int*)calloc(globalCount,sizeof(int));
   cudaMalloc(&domain_d,globalCount*sizeof(int));

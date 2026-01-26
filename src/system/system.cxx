@@ -112,7 +112,7 @@ void System::setup_parse_system()
   parseSystem["endwhile"]=&System::parse_system_endwhile;
   helpSystem["endwhile"]="?while [conditional]\nendwhile> Used for loops within script. To use a for loop, place initialization before while and increment operation before endwhile.\n";
   parseSystem["verbose"]=&System::parse_system_verbose;
-  helpSystem["verbose"]="?verbose [int]> Set a verbose level for output. verbose=1 is default, verbose=0 is less output.\n";
+  helpSystem["verbose"]="?verbose [int]> Set a verbose level for output. verbose=0 is minimal output (default), verbose=1 prints MINI> progress, verbose=2 adds debug info.\n";
 }
 
 // MOVE
