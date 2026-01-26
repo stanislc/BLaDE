@@ -26,7 +26,15 @@ __global__ void getforce_noe_kernel(int noeCount,struct NoePotential *noes,real3
     // Geometry
     noep=noes[i];
     xi=position[noep.i];
-    xj=position[noep.j];
+
+    // If PNOE is turned on, then second position
+    // is taken as c0x, c0y, c0z
+    if (noep.is_pnoe) {
+        xj = {noep.c0x, noep.c0y, noep.c0z};
+    } else {
+        xj = position[noep.j];
+    }
+
     dr=real3_subpbc<flagBox>(xi,xj,box);
     r=real3_mag<real>(dr);
     if (r<noep.rmin) {
@@ -45,9 +53,11 @@ __global__ void getforce_noe_kernel(int noeCount,struct NoePotential *noes,real3
         if (energy) lEnergy=((real)0.5)*fnoe*r_r0;
       }
     }
-    // Spatial force
-    at_real3_scaleinc(&force[noep.i], fnoe/r,dr);
-    at_real3_scaleinc(&force[noep.j],-fnoe/r,dr);
+    // Spatial force (guard against division by zero when atom is at reference)
+    if (r > (real)1e-10) {
+      at_real3_scaleinc(&force[noep.i], fnoe/r,dr);
+      if (!noep.is_pnoe) at_real3_scaleinc(&force[noep.j],-fnoe/r,dr);
+    }
   }
 
   // Energy, if requested

@@ -1218,11 +1218,11 @@ void getforce_atomRestraintsT(System *system,box_type box,bool calcEnergy)
   Msld *m=system->msld;
   int shMem=0;
 
-  if (r->calcTermFlag[eecats]==false) return;
+  if (r->calcTermFlag[eebias]==false) return;
 
   if (calcEnergy) {
     shMem=BLMS*sizeof(real)/32;
-    pEnergy=s->energy_d+eecats;
+    pEnergy=s->energy_d+eebias;
   }
   if (system->run) {
     stream=system->run->biaspotStream;

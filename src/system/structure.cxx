@@ -694,9 +694,21 @@ void blade_add_shake(System *system,int shakeHbond)
   system->structure->shakeHbond=shakeHbond;
 }
 
-void blade_add_noe(System *system,int i,int j,double rmin,double kmin,double rmax,double kmax,double rpeak,double rswitch,double nswitch)
+void blade_add_noe(System *system,int i,int j,double rmin,double kmin,double rmax,double kmax,double rpeak,double rswitch,double nswitch, double c0x, double c0y, double c0z, bool is_pnoe)
 {
   system+=omp_get_thread_num();
+
+  // Input validation
+  int atomCount = system->structure->atomCount;
+  if (i < 1 || i > atomCount) {
+    fprintf(stderr, "BLaDE NOE: invalid atom index i=%d (atomCount=%d)\n", i, atomCount);
+    return;
+  }
+  if (!is_pnoe && (j < 1 || j > atomCount)) {
+    fprintf(stderr, "BLaDE NOE: invalid atom index j=%d (atomCount=%d)\n", j, atomCount);
+    return;
+  }
+
   struct NoePotential noe;
   noe.i=i-1;
   noe.j=j-1;
@@ -707,6 +719,10 @@ void blade_add_noe(System *system,int i,int j,double rmin,double kmin,double rma
   noe.rpeak=rpeak*ANGSTROM;
   noe.rswitch=rswitch*ANGSTROM;
   noe.nswitch=nswitch;
+  noe.c0x=c0x*ANGSTROM;
+  noe.c0y=c0y*ANGSTROM;
+  noe.c0z=c0z*ANGSTROM;
+  noe.is_pnoe=is_pnoe;
   system->structure->noeList.push_back(noe);
   system->structure->noeCount=system->structure->noeList.size();
 }
