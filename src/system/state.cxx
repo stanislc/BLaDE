@@ -65,6 +65,11 @@ State::State(System *system) {
   cudaMalloc(&(energy_d),rootFactor*eeend*sizeof(real_e));
   cudaMalloc(&(energyBackup_d),eeend*sizeof(real_e));
 
+  // NaN detection flag
+  nanFlag=0;
+  cudaMalloc(&(nanFlag_d),sizeof(int));
+  cudaMemset(nanFlag_d,0,sizeof(int));
+
   if (system->idCount>0) { // OMP
 #pragma omp barrier // OMP
     if (system->id==0) { // OMP
@@ -320,10 +325,27 @@ void State::recv_energy()
 
   cudaMemcpy(energy,energy_d,eeend*sizeof(real_e),cudaMemcpyDeviceToHost);
 
+  // Check GPU-side NaN flag (set by update kernels)
+  check_nan_flag();
+
   for (i=0; i<eepotential; i++) {
     energy[eepotential]+=energy[i];
   }
   energy[eetotal]=energy[eepotential]+energy[eekinetic];
+}
+
+void State::reset_nan_flag()
+{
+  cudaMemset(nanFlag_d,0,sizeof(int));
+}
+
+void State::check_nan_flag()
+{
+  cudaMemcpy(&nanFlag,nanFlag_d,sizeof(int),cudaMemcpyDeviceToHost);
+  if (nanFlag > 0) {
+    int atomIdx = nanFlag - 1;  // Decode atom index
+    fprintf(stderr,"ERROR: NaN/Inf detected at atom %d\n", atomIdx);
+  }
 }
 
 

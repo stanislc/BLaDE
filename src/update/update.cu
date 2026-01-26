@@ -14,6 +14,14 @@
 
 #include "main/real3.h"
 
+// NaN detection: atomically set flag with atom index (only first NaN is recorded)
+__device__ inline void check_nan_set_flag(real_v v, int atomIdx, int *nanFlag)
+{
+  if (!isfinite(v)) {
+    atomicCAS(nanFlag, 0, atomIdx + 1);  // Store atom index + 1 (0 means no NaN)
+  }
+}
+
 
 
 // See https://aip.scitation.org/doi/abs/10.1063/1.1420460 for barostat
@@ -68,7 +76,7 @@ __global__ void update_VV(struct LeapState ls,struct LeapParms2 lp1,struct LeapP
   }
 }
 
-__global__ void update_VhbpR(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2,real_x *bx)
+__global__ void update_VhbpR(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2,real_x *bx,int *nanFlag)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   struct LeapParms2 lp;
@@ -90,11 +98,13 @@ __global__ void update_VhbpR(struct LeapState ls,struct LeapParms2 lp1,struct Le
       ls.v[i]=v;
       // if (!(ls.v[i] < 100 && ls.v[i] > -100)) printf("Crashing VhbpR i=%d, v=%f, f=%f, x=%f\n",i,ls.v[i],ls.f[i],ls.x[i]); // DEBUG
       ls.x[i]=x;
+      // NaN detection
+      if (nanFlag) check_nan_set_flag(v, i, nanFlag);
     }
   }
 }
 
-__global__ void update_VVhbpR(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2,real_x *bx)
+__global__ void update_VVhbpR(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2,real_x *bx,int *nanFlag)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   struct LeapParms2 lp;
@@ -116,6 +126,8 @@ __global__ void update_VVhbpR(struct LeapState ls,struct LeapParms2 lp1,struct L
       ls.v[i]=v;
       // if (!(ls.v[i] < 100 && ls.v[i] > -100)) printf("Crashing VVhbpR i=%d, v=%f, f=%f, x=%f\n",i,ls.v[i],ls.f[i],ls.x[i]); // DEBUG
       ls.x[i]=x;
+      // NaN detection
+      if (nanFlag) check_nan_set_flag(v, i, nanFlag);
     }
   }
 }
@@ -181,7 +193,7 @@ __global__ void update_OO(struct LeapState ls,struct LeapParms2 lp1,struct LeapP
   }
 }
 
-__global__ void update_OOhbpR(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2,real_x *bx)
+__global__ void update_OOhbpR(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2,real_x *bx,int *nanFlag)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   struct LeapParms2 lp;
@@ -202,6 +214,8 @@ __global__ void update_OOhbpR(struct LeapState ls,struct LeapParms2 lp1,struct L
       ls.v[i]=v;
       // if (!(ls.v[i] < 100 && ls.v[i] > -100)) printf("Crashing OOhbpR i=%d, v=%f, r=%f, x=%f\n",i,ls.v[i],ls.random[i],ls.x[i]); // DEBUG
       ls.x[i]=x;
+      // NaN detection
+      if (nanFlag) check_nan_set_flag(v, i, nanFlag);
     }
   }
 }
@@ -243,13 +257,13 @@ void State::update(int step,System *system)
     // update_V<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
     // holonomic_velocity(system);
     // update_hbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
-    update_VhbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
+    update_VhbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d,nanFlag_d);
   } else {
     // Update V from previous step and for current step
     // update_VV<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
     // holonomic_velocity(system);
     // update_hbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
-    update_VVhbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
+    update_VVhbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d,nanFlag_d);
   }
   // Velocity Constraint
   // holonomic_velocity(system); // superfluous, I think
@@ -264,7 +278,7 @@ void State::update(int step,System *system)
   // update_OO<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
   // holonomic_velocity(system); // superfluous, I think
   // update_hbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
-  update_OOhbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
+  update_OOhbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d,nanFlag_d);
   // Velocity Constraint
   // holonomic_velocity(system); // superfluous, I think
   // Update spatial coordinates

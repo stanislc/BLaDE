@@ -76,6 +76,10 @@ class State {
   real_e *energyBackup_d;
   real_e *energy_omp;
 
+  // NaN detection flag (GPU-side, checked during recv_energy)
+  int *nanFlag_d;      // GPU flag: 0=ok, >0=NaN detected (encoded atom index + 1)
+  int nanFlag;         // CPU copy of flag
+
   // Minimization buffers
   real_e *grads2_d; // sd+sdfd, [0] is rms, [1] is max
   real_e prevEnergy; // sd
@@ -159,6 +163,8 @@ class State {
   void recv_position();
   void recv_lambda();
   void recv_energy();
+  void reset_nan_flag();
+  void check_nan_flag();
 
   void backup_position();
   void restore_position();
