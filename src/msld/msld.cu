@@ -598,21 +598,21 @@ bool Msld::nbex_scaling(int idx[2],int siteBlock[2])
     block[1]=ab;
   }
 
-  if (msldEwaldType==1) {
-    if (block[0]==block[1]) {
-      block[1]=0;
-    }
-    if (block[0]!=block[1] && lambdaSite[block[0]]==lambdaSite[block[1]]) {
-      include=false;
-    }
-  } else if (msldEwaldType==2) {
+  // PMEL mode-specific pair filtering (matches DOMDEC behavior)
+  // Mode 0: PMEL not specified - treat as ON (exclude same-site different-block pairs)
+  // Mode 1 (ON): Exclude same-site different-block pairs
+  // Mode 2 (EX): Exclude same-site different-block pairs
+  // Mode 3 (NN): Include all pairs (no filtering)
+  // Note: Mode-specific energy/force scaling is handled explicitly in the kernel (pair.cu)
+  if (msldEwaldType <= 2) {
+    // Modes 0/ON/EX: Exclude different blocks within same site
     if (block[0]!=block[1] && lambdaSite[block[0]]==lambdaSite[block[1]]) {
       include=false;
     }
   } else if (msldEwaldType==3) {
-    // Do nothing, scale by both atom's lambdas regardless of site
+    // Mode NN: Include all pairs, scale by both atom's lambdas regardless of site
   } else {
-    fatal(__FILE__,__LINE__,"Illegal msldEwaldType parameter of %d, only 1, 2, or 3 is allowed\n",msldEwaldType);
+    fatal(__FILE__,__LINE__,"Illegal msldEwaldType parameter of %d, only 0, 1, 2, or 3 is allowed\n",msldEwaldType);
   }
 
   for (i=0; i<2; i++) {

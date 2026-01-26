@@ -193,7 +193,7 @@ __device__ void function_pair(NbExPotential pp,Cutoffs rc,real r,real *fpair,rea
 
 
 template <bool flagBox,class PairPotential,bool useSoftCore,int vdwMethod,int elecMethod,typename box_type>
-__global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs cutoffs,real3 *position,real3_f *force,box_type box,real *lambda,real_f *lambdaForce,real_e *energy)
+__global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs cutoffs,real3 *position,real3_f *force,box_type box,real *lambda,real_f *lambdaForce,real_e *energy,int msldEwaldType=0)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int ii,jj;
@@ -251,7 +251,8 @@ __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs 
     function_pair(pp,cutoffs,rEff,&fpair,&lEnergy, b[0] || energy,vdwMethod,elecMethod);
     fpair*=l[0]*l[1];
 
-    // Lambda force
+    // Lambda force - with PMEL mode-specific handling for NbEx
+    bool sameBlock = (b[0] == b[1] && b[0] != 0);
     if (useSoftCore) {
       if (b[0]) {
         atomicAdd(&lambdaForce[b[0]],l[1]*(lEnergy+fpair*dredll));
@@ -260,10 +261,22 @@ __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs 
         }
       }
     } else {
-      if (b[0]) {
-        atomicAdd(&lambdaForce[b[0]],l[1]*lEnergy);
-        if (b[1]) {
-          atomicAdd(&lambdaForce[b[1]],l[0]*lEnergy);
+      // PMEL mode-specific lambda force calculation
+      // msldEwaldType: 0=not specified (treat as ON), 1=ON, 2=EX, 3=NN
+      if (msldEwaldType <= 1 && sameBlock) {
+        // Mode 0/ON same-block: single lambda derivative (dE/dlambda = E)
+        if (b[0]) atomicAdd(&lambdaForce[b[0]], lEnergy);
+      } else if (msldEwaldType == 2 && sameBlock) {
+        // Mode EX same-block: squared scaling derivative (d(lambda^2*E)/dlambda = 2*lambda*E)
+        if (b[0]) atomicAdd(&lambdaForce[b[0]], 2*l[0]*lEnergy);
+      } else {
+        // Standard case: Mode 0/ON/EX cross-block, Mode NN, or nb14
+        // Derivative of lambda_i * lambda_j * E gives lambda_j*E to i, lambda_i*E to j
+        if (b[0]) {
+          atomicAdd(&lambdaForce[b[0]], l[1]*lEnergy);
+          if (b[1]) {
+            atomicAdd(&lambdaForce[b[1]], l[0]*lEnergy);
+          }
         }
       }
     }
@@ -276,9 +289,23 @@ __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs 
     at_real3_scaleinc(&force[jj],-fpair/r,dr);
   }
 
-  // Energy, if requested
+  // Energy, if requested - with PMEL mode-specific scaling
   if (energy) {
-    lEnergy*=l[0]*l[1];
+    // PMEL mode-specific energy scaling
+    // msldEwaldType: 0=not specified (treat as ON), 1=ON, 2=EX, 3=NN
+    bool sameBlock_e = (b[0] == b[1] && b[0] != 0);
+    real fscalex;
+    if (msldEwaldType <= 1 && sameBlock_e) {
+      // Mode 0/ON same-block: single lambda scaling
+      fscalex = l[0];
+    } else if (msldEwaldType == 2 && sameBlock_e) {
+      // Mode EX same-block: squared scaling
+      fscalex = l[0] * l[0];
+    } else {
+      // Standard case: product of lambdas
+      fscalex = l[0] * l[1];
+    }
+    lEnergy *= fscalex;
     real_sum_reduce(lEnergy,sEnergy,energy);
   }
 }
@@ -354,7 +381,7 @@ void getforce_nb14(System *system,bool calcEnergy)
 
 
 template <bool flagBox,typename box_type>
-void getforce_nbexT(System *system,box_type box,bool calcEnergy)
+void getforce_nbexT(System *system,box_type box,bool calcEnergy,int msldEwaldType)
 {
   Potential *p=system->potential;
   State *s=system->state;
@@ -375,14 +402,17 @@ void getforce_nbexT(System *system,box_type box,bool calcEnergy)
 
   // Never use soft cores for nbex, they're already soft.
   // vdwMethod=0 (not used for nbex), elecMethod=1 (PME)
-  getforce_pair_kernel <flagBox,NbExPotential,false,0,1> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,pEnergy);
+  // Pass msldEwaldType for PMEL mode-specific handling (0=not specified/ON, 1=ON, 2=EX, 3=NN)
+  getforce_pair_kernel <flagBox,NbExPotential,false,0,1> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,pEnergy,msldEwaldType);
 }
 
 void getforce_nbex(System *system,bool calcEnergy)
 {
+  // Get PMEL mode from MSLD module
+  int msldEwaldType = system->msld ? system->msld->msldEwaldType : 0;
   if (system->state->typeBox) {
-    getforce_nbexT<true>(system,system->state->tricBox_f,calcEnergy);
+    getforce_nbexT<true>(system,system->state->tricBox_f,calcEnergy,msldEwaldType);
   } else {
-    getforce_nbexT<false>(system,system->state->orthBox_f,calcEnergy);
+    getforce_nbexT<false>(system,system->state->orthBox_f,calcEnergy,msldEwaldType);
   }
 }

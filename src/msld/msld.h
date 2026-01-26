@@ -82,7 +82,7 @@ class Msld {
 
   bool useSoftCore;
   bool useSoftCore14;
-  int msldEwaldType; // 1=normal scaling 2=normal scaling squared self interactions 3=correct scaling
+  int msldEwaldType; // PMEL mode: 0=not specified (treat as ON), 1=ON, 2=EX, 3=NN
 
   real kRestraint;
   real kChargeRestraint;
