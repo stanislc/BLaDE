@@ -3,8 +3,12 @@
 
 #include <map>
 #include <string>
+#include <signal.h>
 
 #include "main/defines.h"
+
+// Global interrupt flag for Ctrl+C handling
+extern volatile sig_atomic_t blade_interrupt_flag;
 
 #include "xdr/xdrfile.h"
 #include "xdr/xdrfile_xtc.h"
@@ -150,6 +154,11 @@ extern "C" {
     int step, int step0, int nsteps, double dt, double T,
     int freqNPT, double volumeFluctuation, double pressure);
   void blade_run_energy(System *system);
+  // Interrupt handling for Ctrl+C
+  void blade_set_interrupt(int value);
+  int blade_check_interrupt();
+  void blade_install_signal_handler();
+  void blade_restore_signal_handler();
 }
 
 #endif

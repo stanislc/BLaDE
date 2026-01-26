@@ -1,8 +1,36 @@
 #include <omp.h>
 #include <cuda_runtime.h>
 #include <string.h>
+#include <signal.h>
 
 #include "run/run.h"
+
+// Global interrupt flag for Ctrl+C handling
+volatile sig_atomic_t blade_interrupt_flag = 0;
+static struct sigaction blade_old_sigint_action;
+static bool blade_signal_handler_installed = false;
+static int blade_sigint_count = 0;
+static const int BLADE_FORCE_EXIT_COUNT = 3;
+
+// Signal handler for SIGINT (Ctrl+C)
+static void blade_sigint_handler(int signum) {
+  blade_sigint_count++;
+  blade_interrupt_flag = 1;
+
+  if (blade_sigint_count >= BLADE_FORCE_EXIT_COUNT) {
+    fprintf(stderr, "\n[BLaDE] %dx Ctrl+C - FORCE EXIT!\n", blade_sigint_count);
+    fflush(stderr);
+    // Restore default handler and re-raise to exit immediately
+    signal(SIGINT, SIG_DFL);
+    raise(SIGINT);
+    return;
+  }
+
+  int remaining = BLADE_FORCE_EXIT_COUNT - blade_sigint_count;
+  fprintf(stderr, "\n[BLaDE] SIGINT received, requesting graceful stop... "
+          "(press %dx more to force quit)\n", remaining);
+  fflush(stderr);
+}
 #include "system/system.h"
 #include "io/io.h"
 #include "msld/msld.h"
@@ -496,10 +524,19 @@ void Run::test(char *line,char *token,System *system)
 
 void Run::minimize(char *line,char *token,System *system)
 {
+  bool interrupted = false;
+
   dynamics_initialize(system);
   system->state->min_init(system);
 
   for (step=0; step<nsteps; step++) {
+    // Check for interrupt (Ctrl+C)
+    if (blade_interrupt_flag) {
+      fprintf(stdout,"\nBLaDE minimization interrupted by user at step %ld\n", step);
+      fflush(stdout);
+      interrupted = true;
+      break;
+    }
     system->domdec->update_domdec(system,true); // true to always update neighbor list
     system->potential->calc_force(0,system); // step 0 to always calculate energy
     system->state->min_move(step,nsteps,system);
@@ -507,6 +544,9 @@ void Run::minimize(char *line,char *token,System *system)
     gpuCheck(cudaPeekAtLastError());
   }
 
+  if (interrupted) {
+    fprintf(stdout,"Minimization stopped early due to interrupt\n");
+  }
   system->state->min_dest(system);
   dynamics_finalize(system);
 }
@@ -514,6 +554,7 @@ void Run::minimize(char *line,char *token,System *system)
 void Run::dynamics(char *line,char *token,System *system)
 {
   clock_t t1,t2;
+  bool interrupted = false;
 
   // Initialize data structures
   dynamics_initialize(system);
@@ -521,6 +562,13 @@ void Run::dynamics(char *line,char *token,System *system)
   // Run dynamics
   t1=clock();
   for (step=step0; step<step0+nsteps; step++) {
+    // Check for interrupt (Ctrl+C)
+    if (blade_interrupt_flag) {
+      fprintf(stdout,"\nBLaDE dynamics interrupted by user at step %ld\n", step);
+      fflush(stdout);
+      interrupted = true;
+      break;
+    }
     if (system->verbose>0) {
       fprintf(stdout,"Step %d\n",step);
     }
@@ -534,6 +582,9 @@ void Run::dynamics(char *line,char *token,System *system)
   t2=clock();
 // Note: omp_get_wtime may be of more interest when parallelizing
   fprintf(stdout,"Elapsed dynamics time: %f\n",(t2-t1)*1.0/CLOCKS_PER_SEC);
+  if (interrupted) {
+    fprintf(stdout,"Dynamics stopped early due to interrupt\n");
+  }
 
   dynamics_finalize(system);
 }
@@ -676,7 +727,7 @@ void blade_add_run_dynopts(System *system,
 void blade_run_energy(System *system)
 {
   system+=omp_get_thread_num();
-  
+
   if (!system->run) {
     system->run=new Run(system);
   }
@@ -684,4 +735,37 @@ void blade_run_energy(System *system)
   system->potential->calc_force(0,system);
   system->state->recv_energy();
   system->run->dynamics_finalize(system);
+}
+
+// Interrupt handling API functions
+void blade_set_interrupt(int value)
+{
+  blade_interrupt_flag = value;
+}
+
+int blade_check_interrupt()
+{
+  return blade_interrupt_flag;
+}
+
+void blade_install_signal_handler()
+{
+  if (!blade_signal_handler_installed) {
+    struct sigaction new_action;
+    new_action.sa_handler = blade_sigint_handler;
+    sigemptyset(&new_action.sa_mask);
+    new_action.sa_flags = 0;
+    sigaction(SIGINT, &new_action, &blade_old_sigint_action);
+    blade_signal_handler_installed = true;
+    blade_interrupt_flag = 0;  // Reset flag when installing handler
+    blade_sigint_count = 0;    // Reset rapid Ctrl+C counter
+  }
+}
+
+void blade_restore_signal_handler()
+{
+  if (blade_signal_handler_installed) {
+    sigaction(SIGINT, &blade_old_sigint_action, NULL);
+    blade_signal_handler_installed = false;
+  }
 }
