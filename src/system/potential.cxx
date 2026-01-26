@@ -18,6 +18,7 @@
 #include "nbdirect/nbdirect.h"
 #include "restrain/restrain.h"
 #include "holonomic/virtual.h"
+#include "main/blade_log.h"
 
 #ifdef USE_TEXTURE
 #include <string.h> // for memset
@@ -1082,7 +1083,9 @@ void Potential::initialize(System *system)
       gridDimPME[i]=system->run->grid[i];
     }
     if (system->verbose>0) {
-      fprintf(stdout,"PME grid(%d) size: %d\n",i,gridDimPME[i]);
+      char buf[256];
+      snprintf(buf, sizeof(buf), "PME grid(%d) size: %d\n", i, gridDimPME[i]);
+      blade_log(buf);
     }
   }
 
