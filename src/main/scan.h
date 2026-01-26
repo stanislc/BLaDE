@@ -4,19 +4,8 @@
 #include <cuda_runtime.h>
 #include "main/defines.h"
 
-//-----------------------------------------------------------------------------
-// CHARMM API compatibility
-//-----------------------------------------------------------------------------
-#ifdef BLADE_STANDALONE
-// Standalone mode: provide a no-op or printf stub
-inline void blade_write_to_charmm(const char* message) {
-    // In standalone mode, either print to stdout or ignore
-    // printf("%s", message);  // Optional: uncomment to enable output
-}
-#else
-// CHARMM API mode: declare external function provided by CHARMM
-extern "C" void blade_write_to_charmm(const char* message);
-#endif
+// Platform-independent logging - implementation provided by build system
+#include "main/blade_log.h"
 
 //=============================================================================
 // Multi-Block Parallel Prefix Sum (Scan) Primitives
