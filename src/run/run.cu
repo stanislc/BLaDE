@@ -4,6 +4,7 @@
 #include <signal.h>
 
 #include "run/run.h"
+#include "main/blade_log.h"
 
 // Global interrupt flag for Ctrl+C handling
 volatile sig_atomic_t blade_interrupt_flag = 0;
@@ -254,15 +255,17 @@ void Run::setup_parse_run()
 
 void Run::help(char *line,char *token,System *system)
 {
+  char buf[256];
   std::string name=io_nexts(line);
   if (name=="") {
-    fprintf(stdout,"?run> Available directives are:\n");
+    blade_log("?run> Available directives are:\n");
     for (std::map<std::string,std::string>::iterator ii=helpRun.begin(); ii!=helpRun.end(); ii++) {
-      fprintf(stdout," %s",ii->first.c_str());
+      snprintf(buf, sizeof(buf), " %s", ii->first.c_str());
+      blade_log(buf);
     }
-    fprintf(stdout,"\n");
+    blade_log("\n");
   } else if (helpRun.count(token)==1) {
-    fprintf(stdout,helpRun[name].c_str());
+    blade_log(helpRun[name].c_str());
   } else {
     error(line,token,system);
   }
@@ -275,35 +278,64 @@ void Run::error(char *line,char *token,System *system)
 
 void Run::dump(char *line,char *token,System *system)
 {
-  fprintf(stdout,"RUN PRINT> dt=%f (time step input in ps)\n",dt/PICOSECOND);
-  fprintf(stdout,"RUN PRINT> T=%f (temperature in K)\n",T);
-  fprintf(stdout,"RUN PRINT> gamma=%f (friction input in ps^-1)\n",gamma*PICOSECOND);
-  fprintf(stdout,"RUN PRINT> nsteps=%d (number of time steps for dynamics)\n",nsteps);
-  fprintf(stdout,"RUN PRINT> fnmxtc=%s (file name for coordinate trajectory)\n",fnmXTC.c_str());
-  fprintf(stdout,"RUN PRINT> fnmlmd=%s (file name for lambda trajectory)\n",fnmLMD.c_str());
-  fprintf(stdout,"RUN PRINT> fnmnrg=%s (file name for energy output)\n",fnmNRG.c_str());
-  fprintf(stdout,"RUN PRINT> fnmcpi=%s (file name for reading checkpoint in, null means start without checkpoint)\n",fnmCPI.c_str());
-  fprintf(stdout,"RUN PRINT> fnmcpo=%s (file name for writing out checkpoint file for later continuation)\n",fnmCPO.c_str());
-  fprintf(stdout,"RUN PRINT> betaEwald=%f (input 1/invbetaewald in A^-1)\n",betaEwald*ANGSTROM);
-  fprintf(stdout,"RUN PRINT> rcut=%f (input in A)\n",rCut/ANGSTROM);
-  fprintf(stdout,"RUN PRINT> rswitch=%f (input in A)\n",rSwitch/ANGSTROM);
-  fprintf(stdout,"RUN PRINT> vfswitch=%d\n",vfSwitch);
-  fprintf(stdout,"RUN PRINT> usepme=%d\n",usePME);
-  fprintf(stdout,"RUN PRINT> gridspace=%f (For PME - input in A)\n",gridSpace/ANGSTROM);
-  fprintf(stdout,"RUN PRINT> grid=[%d %d %d] (For PME if gridspace<0)\n",grid[0],grid[1],grid[2]);
-  fprintf(stdout,"RUN PRINT> orderewald=%d (PME interpolation order, dimensionless. 4, 6, 8, or 10 supported, 6 recommended)\n",orderEwald);
-  fprintf(stdout,"RUN PRINT> shaketolerance=%f (For use with shake - dimensionless - do not go below 1e-7 with single precision)\n",shakeTolerance);
-  fprintf(stdout,"RUN PRINT> freqnpt=%d (frequency of pressure coupling moves. 10 or less reproduces bulk dynamics, OpenMM often uses 100)\n",freqNPT);
-  fprintf(stdout,"RUN PRINT> volumefluctuation=%f (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))\n",volumeFluctuation/(ANGSTROM*ANGSTROM*ANGSTROM));
-  fprintf(stdout,"RUN PRINT> pressure=%f (pressure for pressure coupling, input in atmospheres)\n",pressure/ATMOSPHERE);
-  fprintf(stdout,"RUN PRINT> dxatommax=%f (Maximum minimization atom displacement in A)\n",dxAtomMax/ANGSTROM);
-  fprintf(stdout,"RUN PRINT> dxrmsinit=%f (Starting minimization rms displacement in A)\n",dxRMSInit/ANGSTROM);
-  fprintf(stdout,"RUN PRINT> mintype=%d (minimization algorithm. 0 is steepest descent, etc)\n",minType);
-  fprintf(stdout,"RUN PRINT> nprint=%d (print frequency for MINI> output)\n",nprint);
-  fprintf(stdout,"RUN PRINT> domdecheuristic=%d (use heuristics for domdec limits without checking their validity)\n",(int)domdecHeuristic);
+  char buf[256];
+  snprintf(buf, sizeof(buf), "RUN PRINT> dt=%f (time step input in ps)\n", dt/PICOSECOND);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> T=%f (temperature in K)\n", T);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> gamma=%f (friction input in ps^-1)\n", gamma*PICOSECOND);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> nsteps=%d (number of time steps for dynamics)\n", nsteps);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> fnmxtc=%s (file name for coordinate trajectory)\n", fnmXTC.c_str());
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> fnmlmd=%s (file name for lambda trajectory)\n", fnmLMD.c_str());
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> fnmnrg=%s (file name for energy output)\n", fnmNRG.c_str());
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> fnmcpi=%s (file name for reading checkpoint in, null means start without checkpoint)\n", fnmCPI.c_str());
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> fnmcpo=%s (file name for writing out checkpoint file for later continuation)\n", fnmCPO.c_str());
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> betaEwald=%f (input 1/invbetaewald in A^-1)\n", betaEwald*ANGSTROM);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> rcut=%f (input in A)\n", rCut/ANGSTROM);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> rswitch=%f (input in A)\n", rSwitch/ANGSTROM);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> vfswitch=%d\n", vfSwitch);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> usepme=%d\n", usePME);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> gridspace=%f (For PME - input in A)\n", gridSpace/ANGSTROM);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> grid=[%d %d %d] (For PME if gridspace<0)\n", grid[0], grid[1], grid[2]);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> orderewald=%d (PME interpolation order, dimensionless. 4, 6, 8, or 10 supported, 6 recommended)\n", orderEwald);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> shaketolerance=%f (For use with shake - dimensionless - do not go below 1e-7 with single precision)\n", shakeTolerance);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> freqnpt=%d (frequency of pressure coupling moves. 10 or less reproduces bulk dynamics, OpenMM often uses 100)\n", freqNPT);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> volumefluctuation=%f (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))\n", volumeFluctuation/(ANGSTROM*ANGSTROM*ANGSTROM));
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> pressure=%f (pressure for pressure coupling, input in atmospheres)\n", pressure/ATMOSPHERE);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> dxatommax=%f (Maximum minimization atom displacement in A)\n", dxAtomMax/ANGSTROM);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> dxrmsinit=%f (Starting minimization rms displacement in A)\n", dxRMSInit/ANGSTROM);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> mintype=%d (minimization algorithm. 0 is steepest descent, etc)\n", minType);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> nprint=%d (print frequency for MINI> output)\n", nprint);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> domdecheuristic=%d (use heuristics for domdec limits without checking their validity)\n", (int)domdecHeuristic);
+  blade_log(buf);
 #ifdef REPLICAEXCHANGE
-  fprintf(stdout,"RUN PRINT> fnmrex=%s (file name for replica exchange)\n",fnmREx.c_str());
-  fprintf(stdout,"RUN PRINT> freqrex=%d (frequency of replica exchange attempts. Use {rexrank} (NYI) to access 0 ordinalized replica index in script)\n",freqREx);
+  snprintf(buf, sizeof(buf), "RUN PRINT> fnmrex=%s (file name for replica exchange)\n", fnmREx.c_str());
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> freqrex=%d (frequency of replica exchange attempts. Use {rexrank} (NYI) to access 0 ordinalized replica index in script)\n", freqREx);
+  blade_log(buf);
 #endif
 }
 
@@ -511,8 +543,10 @@ void Run::test(char *line,char *token,System *system)
           system->state->restore_position();
         }
         if (system->id==0) {
+          char buf[256];
           cudaMemcpy(&F,&system->state->forceBuffer_d[ij],sizeof(real),cudaMemcpyDeviceToHost);
-          fprintf(stdout,"ij=%7d, Emin=%20.16g, Emax=%20.16g, (Emax-Emin)/dx=%20.16g, force=%20.16g\n",ij,E[0],E[1],(E[1]-E[0])/dx,F);
+          snprintf(buf, sizeof(buf), "ij=%7d, Emin=%20.16g, Emax=%20.16g, (Emax-Emin)/dx=%20.16g, force=%20.16g\n", ij, E[0], E[1], (E[1]-E[0])/dx, F);
+          blade_log(buf);
         }
       }
     }
@@ -531,8 +565,9 @@ void Run::minimize(char *line,char *token,System *system)
   for (step=0; step<nsteps; step++) {
     // Check for interrupt (Ctrl+C)
     if (blade_interrupt_flag) {
-      fprintf(stdout,"\nBLaDE minimization interrupted by user at step %ld\n", step);
-      fflush(stdout);
+      char buf[256];
+      snprintf(buf, sizeof(buf), "\nBLaDE minimization interrupted by user at step %ld\n", step);
+      blade_log(buf);
       interrupted = true;
       break;
     }
@@ -544,7 +579,7 @@ void Run::minimize(char *line,char *token,System *system)
   }
 
   if (interrupted) {
-    fprintf(stdout,"Minimization stopped early due to interrupt\n");
+    blade_log("Minimization stopped early due to interrupt\n");
   }
   system->state->min_dest(system);
   dynamics_finalize(system);
@@ -563,13 +598,16 @@ void Run::dynamics(char *line,char *token,System *system)
   for (step=step0; step<step0+nsteps; step++) {
     // Check for interrupt (Ctrl+C)
     if (blade_interrupt_flag) {
-      fprintf(stdout,"\nBLaDE dynamics interrupted by user at step %ld\n", step);
-      fflush(stdout);
+      char buf[256];
+      snprintf(buf, sizeof(buf), "\nBLaDE dynamics interrupted by user at step %ld\n", step);
+      blade_log(buf);
       interrupted = true;
       break;
     }
     if (system->verbose>0) {
-      fprintf(stdout,"Step %d\n",step);
+      char buf[256];
+      snprintf(buf, sizeof(buf), "Step %d\n", step);
+      blade_log(buf);
     }
     system->domdec->update_domdec(system,(step%system->domdec->freqDomdec)==0);
     system->potential->calc_force(step,system);
@@ -580,9 +618,13 @@ void Run::dynamics(char *line,char *token,System *system)
   }
   t2=clock();
 // Note: omp_get_wtime may be of more interest when parallelizing
-  fprintf(stdout,"Elapsed dynamics time: %f\n",(t2-t1)*1.0/CLOCKS_PER_SEC);
+  {
+    char buf[256];
+    snprintf(buf, sizeof(buf), "Elapsed dynamics time: %f\n", (t2-t1)*1.0/CLOCKS_PER_SEC);
+    blade_log(buf);
+  }
   if (interrupted) {
-    fprintf(stdout,"Dynamics stopped early due to interrupt\n");
+    blade_log("Dynamics stopped early due to interrupt\n");
   }
 
   dynamics_finalize(system);
