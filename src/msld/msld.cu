@@ -12,6 +12,7 @@
 #include "run/run.h"
 
 #include "main/real3.h"
+#include "main/blade_log.h"
 
 
 
@@ -169,7 +170,9 @@ void parse_msld(char *line,System *system)
     cudaMalloc(&(system->msld->lambdaCharge_d),system->msld->blockCount*sizeof(real));
 
     // NYI - this would be a lot easier to read if these were split in to parsing functions.
-    fprintf(stdout,"NYI - Initialize all blocks in first site %s:%d\n",__FILE__,__LINE__);
+    char buf[256];
+    snprintf(buf, sizeof(buf), "NYI - Initialize all blocks in first site %s:%d\n", __FILE__, __LINE__);
+    blade_log(buf);
   } else if (strcmp(token,"call")==0) {
     i=io_nexti(line);
     if (i<0 || i>=system->msld->blockCount) {
