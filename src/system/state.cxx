@@ -167,6 +167,8 @@ State::~State() {
   if (energy) free(energy);
   if (energy_d) cudaFree(energy_d);
   if (energyBackup_d) cudaFree(energyBackup_d);
+  // NaN detection flag
+  if (nanFlag_d) cudaFree(nanFlag_d);
   // Spatial-Theta buffers
   if (velocityBuffer) free(velocityBuffer);
   if (velocityBuffer_d) cudaFree(velocityBuffer_d);
@@ -345,7 +347,7 @@ void State::check_nan_flag()
   cudaMemcpy(&nanFlag,nanFlag_d,sizeof(int),cudaMemcpyDeviceToHost);
   if (nanFlag > 0) {
     int atomIdx = nanFlag - 1;  // Decode atom index
-    fprintf(stderr,"ERROR: NaN/Inf detected at atom %d\n", atomIdx);
+    fatal(__FILE__,__LINE__,"NaN/Inf detected at atom %d. Check structure or parameters.",atomIdx);
   }
 }
 

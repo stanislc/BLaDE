@@ -303,9 +303,11 @@ void Run::dump(char *line,char *token,System *system)
   blade_log(buf);
   snprintf(buf, sizeof(buf), "RUN PRINT> rswitch=%f (input in A)\n", rSwitch/ANGSTROM);
   blade_log(buf);
-  snprintf(buf, sizeof(buf), "RUN PRINT> vfswitch=%d\n", vfSwitch);
+  const char *vdwMethodNames[] = {"VSWITCH", "VFSWITCH", "VSHIFT"};
+  const char *elecMethodNames[] = {"FSWITCH", "PME", "FSHIFT"};
+  snprintf(buf, sizeof(buf), "RUN PRINT> vdwmethod=%s (vswitch, vfswitch, or vshift)\n", vdwMethodNames[vdwMethod]);
   blade_log(buf);
-  snprintf(buf, sizeof(buf), "RUN PRINT> usepme=%d\n", usePME);
+  snprintf(buf, sizeof(buf), "RUN PRINT> elecmethod=%s (fswitch, pme, or fshift)\n", elecMethodNames[elecMethod]);
   blade_log(buf);
   snprintf(buf, sizeof(buf), "RUN PRINT> gridspace=%f (For PME - input in A)\n", gridSpace/ANGSTROM);
   blade_log(buf);
@@ -395,8 +397,38 @@ void Run::set_variable(char *line,char *token,System *system)
     cutoffs.rSwitch=rSwitch;
   } else if (strcmp(token,"vfswitch")==0) {
     vfSwitch=io_nextb(line);
+    vdwMethod=vfSwitch?evfswitch:evswitch;
+  } else if (strcmp(token,"vdwmethod")==0) {
+    std::string method=io_nexts(line);
+    if (method=="vswitch") {
+      vdwMethod=evswitch;
+      vfSwitch=false;
+    } else if (method=="vfswitch") {
+      vdwMethod=evfswitch;
+      vfSwitch=true;
+    } else if (method=="vshift") {
+      vdwMethod=evshift;
+      vfSwitch=false;
+    } else {
+      fatal(__FILE__,__LINE__,"Unknown vdwmethod: %s (use vswitch, vfswitch, or vshift)\n",method.c_str());
+    }
   } else if (strcmp(token,"usepme")==0) {
     usePME=io_nextb(line);
+    elecMethod=usePME?epme:efswitch;
+  } else if (strcmp(token,"elecmethod")==0) {
+    std::string method=io_nexts(line);
+    if (method=="fswitch") {
+      elecMethod=efswitch;
+      usePME=false;
+    } else if (method=="pme") {
+      elecMethod=epme;
+      usePME=true;
+    } else if (method=="fshift") {
+      elecMethod=efshift;
+      usePME=false;
+    } else {
+      fatal(__FILE__,__LINE__,"Unknown elecmethod: %s (use fswitch, pme, or fshift)\n",method.c_str());
+    }
   } else if (strcmp(token,"gridspace")==0) {
     gridSpace=io_nextf(line)*ANGSTROM;
   } else if (strcmp(token,"grid")==0) {
@@ -731,6 +763,9 @@ void blade_add_run_flags(System *system,
   system->run->rSwitch=rSwitch;
   system->run->vfSwitch=vdWfSwitch==1;
   system->run->usePME=elecPME==1;
+  // Set enum values from parameters
+  system->run->vdwMethod=(EVdw)vdWfSwitch;
+  system->run->elecMethod=(EElec)elecPME;
   system->run->gridSpace=gridSpace; // grid spacing for PME calculation
   system->run->grid[0]=gridx; // if gridSpace is negative, use these values
   system->run->grid[1]=gridy; // if gridSpace is negative, use these values

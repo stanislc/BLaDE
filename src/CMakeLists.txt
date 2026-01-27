@@ -27,7 +27,7 @@ if (PRECISION STREQUAL "DOUBLE")
 endif()
 
 # Standalone build flag
-# When ON (default), includes blade_log.cpp implementation (printf to stdout)
+# When ON (default), includes blade_log.cxx implementation (printf to stdout)
 # When OFF (submodule in CHARMM), consumer provides blade_log implementation
 option(BLADE_STANDALONE "Build standalone BLaDE with built-in logging" ON)
 if(BLADE_STANDALONE)
