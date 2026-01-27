@@ -110,7 +110,7 @@ void Domdec::initialize(System *system)
   domainDiv.y=(int)ceil(box.y/(approxBlockBox*gridDomdec.y));
   // If each column has one empty block at the end, there cannot be more blocks than the number of atoms divided into 32 plus one for each column
   maxBlocks=(globalCount/32+1)+(idCount*domainDiv.x*domainDiv.y);
-  if (system->verbose>0) {
+  if (system->verbose > 1) {
     char buf[256];
     snprintf(buf, sizeof(buf), "maxBlocks=%d\n", maxBlocks);
     blade_log(buf);
@@ -122,7 +122,7 @@ void Domdec::initialize(System *system)
 // #warning "Increased maxPartnersPerBlock"
   // maxPartnersPerBlock=2*((int)(edge*edge*edge/(32*invDensity)));
   maxPartnersPerBlock=3*((int)(edge*edge*edge/(32*invDensity)));
-  if (system->verbose>0) {
+  if (system->verbose > 1) {
     char buf[256];
     snprintf(buf, sizeof(buf), "The following parameters are set heuristically at %s:%d, and can cause errors if set too low\n", __FILE__, __LINE__);
     blade_log(buf);
@@ -134,7 +134,7 @@ void Domdec::initialize(System *system)
   // How far two particles, each with hydrogen/unit mass can get in freqDomdec timesteps, if each has 30 kT of kinetic energy. Incredibly rare to violate this.
   cullPad=2*sqrt(30*kB*system->run->T/1)*freqDomdec*system->run->dt;
   maxBlockExclCount=(4*system->potential->exclCount+1024)/32; // only 32*exclCount is guaranteed, and that only if the box is large. Allocate dynamically
-  if (system->verbose>0) {
+  if (system->verbose > 1) {
     char buf[256];
     snprintf(buf, sizeof(buf), "freqDomdec=%d (how many steps before domain reset)\n", freqDomdec);
     blade_log(buf);
