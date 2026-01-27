@@ -741,7 +741,7 @@ void blade_add_parameter_cmaps(System *system,
   }
   system+=omp_get_thread_num();
   cp.kcmap=(real*)calloc(cp.ngrid*cp.ngrid,sizeof(real));
-  if (system->verbose>0) {
+  if (system->verbose > 1) {
     char buf[256];
     snprintf(buf, sizeof(buf), "allocating kcmap=%p\n", cp.kcmap);
     blade_log(buf);
