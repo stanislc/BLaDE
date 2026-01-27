@@ -9,6 +9,7 @@
 #include "domdec/domdec.h"
 #include "holonomic/holonomic.h"
 #include "io/io.h"
+#include "main/blade_log.h"
 
 #include "main/real3.h"
 
@@ -161,20 +162,27 @@ void State::min_move(int step,int nsteps,System *system)
 
       // Adaptive MINI> output
       if (step % r->nprint == 0 && system->verbose >= 1) {
-        fprintf(stdout,"MINI> %6d %14.6f %14.6f %14.6f\n", step, currEnergy, deltaE, gradRMS);
+        char buf[256];
+        snprintf(buf, sizeof(buf), "MINI> %6d %14.6f %14.6f %14.6f\n", step, currEnergy, deltaE, gradRMS);
+        blade_log(buf);
       }
 
       // Detailed debug output
       if (system->verbose > 1) {
-        fprintf(stdout,"rmsgrad = %f\n",gradRMS);
-        fprintf(stdout,"maxgrad = %f\n",gradMax);
+        char buf[256];
+        snprintf(buf, sizeof(buf), "rmsgrad = %f\n", gradRMS);
+        blade_log(buf);
+        snprintf(buf, sizeof(buf), "maxgrad = %f\n", gradMax);
+        blade_log(buf);
       }
       // scaling factor to achieve desired rms displacement
       scaling=r->dxRMS/gradRMS;
       // ratio of allowed maximum displacement over actual maximum displacement
       rescaling=r->dxAtomMax/(scaling*gradMax);
       if (system->verbose > 1) {
-        fprintf(stdout,"scaling = %f, rescaling = %f\n",scaling,rescaling);
+        char buf[256];
+        snprintf(buf, sizeof(buf), "scaling = %f, rescaling = %f\n", scaling, rescaling);
+        blade_log(buf);
       }
       // decrease scaling factor if actual max violates allowed max
       if (rescaling<1) {
@@ -218,20 +226,27 @@ void State::min_move(int step,int nsteps,System *system)
 
       // Adaptive MINI> output
       if (step % r->nprint == 0 && system->verbose >= 1) {
-        fprintf(stdout,"MINI> %6d %14.6f %14.6f %14.6f\n", step, currEnergy, deltaE, gradRMS);
+        char buf[256];
+        snprintf(buf, sizeof(buf), "MINI> %6d %14.6f %14.6f %14.6f\n", step, currEnergy, deltaE, gradRMS);
+        blade_log(buf);
       }
 
       // Detailed debug output
       if (system->verbose > 1) {
-        fprintf(stdout,"rmsgrad = %f\n",gradRMS);
-        fprintf(stdout,"maxgrad = %f\n",gradMax);
+        char buf[256];
+        snprintf(buf, sizeof(buf), "rmsgrad = %f\n", gradRMS);
+        blade_log(buf);
+        snprintf(buf, sizeof(buf), "maxgrad = %f\n", gradMax);
+        blade_log(buf);
       }
       // scaling factor to achieve desired rms displacement
       scaling=r->dxRMS/gradRMS;
       // ratio of allowed maximum displacement over actual maximum displacement
       rescaling=r->dxAtomMax/(scaling*gradMax);
       if (system->verbose > 1) {
-        fprintf(stdout,"scaling = %f, rescaling = %f\n",scaling,rescaling);
+        char buf[256];
+        snprintf(buf, sizeof(buf), "scaling = %f, rescaling = %f\n", scaling, rescaling);
+        blade_log(buf);
       }
       // decrease scaling factor if actual max violates allowed max
       if (rescaling<1) {
@@ -257,7 +272,9 @@ void State::min_move(int step,int nsteps,System *system)
       // grads2[0] is F*F, gradDot is F*Fnew
       frac=grads2[0]/(grads2[0]-gradDot[0]);
       if (system->verbose > 1) {
-        fprintf(stdout,"F(x0)*dx = %f, F(x0+dx)*dx = %f, frac = %f\n",grads2[0],gradDot[0],frac);
+        char buf[256];
+        snprintf(buf, sizeof(buf), "F(x0)*dx = %f, F(x0+dx)*dx = %f, frac = %f\n", grads2[0], gradDot[0], frac);
+        blade_log(buf);
       }
       if (frac>1.44 || frac<0) {
         r->dxRMS*=1.2;
