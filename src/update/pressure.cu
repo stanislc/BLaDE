@@ -8,6 +8,7 @@
 #include "rng/rng_cpu.h"
 #include "holonomic/rectify.h"
 #include "io/io.h"
+#include "main/blade_log.h"
 
 
 
@@ -162,15 +163,21 @@ void pressure_coupling(System *system)
     kT=s->leapParms1->kT;
     dW=energyNew-energyOld+r->pressure*(volumeNew-volumeOld)-N*kT*log(volumeNew/volumeOld);
     if (system->verbose>1) {
-      fprintf(stdout,"dW= %f, dV= %f\n",dW,volumeNew-volumeOld);
+      char buf[256];
+      snprintf(buf, sizeof(buf), "dW= %f, dV= %f\n", dW, volumeNew-volumeOld);
+      blade_log(buf);
     }
     if (system->rngCPU->rand_uniform()<exp(-dW/kT)) { // accept move
       if (system->verbose>1) {
-        fprintf(stdout,"Volume move accepted. New volume=%f\n",volumeNew);
+        char buf[256];
+        snprintf(buf, sizeof(buf), "Volume move accepted. New volume=%f\n", volumeNew);
+        blade_log(buf);
       }
     } else {
       if (system->verbose>1) {
-        fprintf(stdout,"Volume move rejected. Old volume=%f\n",volumeOld);
+        char buf[256];
+        snprintf(buf, sizeof(buf), "Volume move rejected. Old volume=%f\n", volumeOld);
+        blade_log(buf);
       }
       s->restore_position();
     }
