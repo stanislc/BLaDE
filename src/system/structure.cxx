@@ -126,7 +126,7 @@ void Structure::file(char *line,char *token,System *system)
   if (strcmp(token,"psf")==0) {
     io_nexta(line,token);
     fp=fpopen(token,"r");
-    add_structure_psf_file(fp);
+    add_structure_psf_file(fp, system);
     fclose(fp);
   } else {
     fatal(__FILE__,__LINE__,"Unsupported structure file format: %s\n",token);
@@ -308,7 +308,7 @@ void Structure::dump(char *line,char *token,System *system)
   blade_log(buf);
 }
 
-void Structure::add_structure_psf_file(FILE *fp)
+void Structure::add_structure_psf_file(FILE *fp, System *system)
 {
   char line[MAXLENGTHSTRING];
   char buf[256];
@@ -324,16 +324,20 @@ void Structure::add_structure_psf_file(FILE *fp)
     fatal(__FILE__,__LINE__,"First line of PSF must start with PSF\n");
   }
   for (token=io_nexts(line); strcmp(token.c_str(),"")!=0; token=io_nexts(line)) {
-    snprintf(buf, sizeof(buf), "Reading PSF, found header string: '%s'\n", token.c_str());
-    blade_log(buf);
+    if (system->verbose >= 1) {
+      snprintf(buf, sizeof(buf), "Reading PSF, found header string: '%s'\n", token.c_str());
+      blade_log(buf);
+    }
     headerInfo.insert(token);
   }
 
   // "Read" title
   fgets(line, MAXLENGTHSTRING, fp);
   j=io_nexti(line,fp,"psf number of title lines");
-  snprintf(buf, sizeof(buf), "Reading PSF, expect !NTITLE: got %s", line);
-  blade_log(buf);
+  if (system->verbose >= 1) {
+    snprintf(buf, sizeof(buf), "Reading PSF, expect !NTITLE: got %s", line);
+    blade_log(buf);
+  }
   for (i=0; i<j; i++) {
     fgets(line, MAXLENGTHSTRING, fp);
   }
@@ -341,8 +345,10 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Read atoms
   fgets(line, MAXLENGTHSTRING, fp);
   atomCount=io_nexti(line,fp,"psf number of atoms");
-  snprintf(buf, sizeof(buf), "Reading PSF, expect !NATOM: got %s", line);
-  blade_log(buf);
+  if (system->verbose >= 1) {
+    snprintf(buf, sizeof(buf), "Reading PSF, expect !NATOM: got %s", line);
+    blade_log(buf);
+  }
   atomList.clear();
   atomList.reserve(atomCount);
   for (i=0; i<atomCount; i++) {
@@ -365,8 +371,10 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Read bonds
   fgets(line, MAXLENGTHSTRING, fp);
   bondCount=io_nexti(line,fp,"psf number of bonds");
-  snprintf(buf, sizeof(buf), "Reading PSF, expect !NBOND: bonds: got %s", line);
-  blade_log(buf);
+  if (system->verbose >= 1) {
+    snprintf(buf, sizeof(buf), "Reading PSF, expect !NBOND: bonds: got %s", line);
+    blade_log(buf);
+  }
   bondList.clear();
   bondList.reserve(bondCount);
   fgets(line, MAXLENGTHSTRING, fp);
@@ -385,8 +393,10 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Read angles
   fgets(line, MAXLENGTHSTRING, fp);
   angleCount=io_nexti(line,fp,"psf number of angles");
-  snprintf(buf, sizeof(buf), "Reading PSF, expect !NTHETA: angles: got %s", line);
-  blade_log(buf);
+  if (system->verbose >= 1) {
+    snprintf(buf, sizeof(buf), "Reading PSF, expect !NTHETA: angles: got %s", line);
+    blade_log(buf);
+  }
   angleList.clear();
   angleList.reserve(angleCount);
   fgets(line, MAXLENGTHSTRING, fp);
@@ -405,8 +415,10 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Read dihes
   fgets(line, MAXLENGTHSTRING, fp);
   diheCount=io_nexti(line,fp,"psf number of dihedrals");
-  snprintf(buf, sizeof(buf), "Reading PSF, expect !NPHI: dihedrals: got %s", line);
-  blade_log(buf);
+  if (system->verbose >= 1) {
+    snprintf(buf, sizeof(buf), "Reading PSF, expect !NPHI: dihedrals: got %s", line);
+    blade_log(buf);
+  }
   diheList.clear();
   diheList.reserve(diheCount);
   fgets(line, MAXLENGTHSTRING, fp);
@@ -425,8 +437,10 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Read imprs
   fgets(line, MAXLENGTHSTRING, fp);
   imprCount=io_nexti(line,fp,"psf number of impropers");
-  snprintf(buf, sizeof(buf), "Reading PSF, expect !NIMPHI: impropers: got %s", line);
-  blade_log(buf);
+  if (system->verbose >= 1) {
+    snprintf(buf, sizeof(buf), "Reading PSF, expect !NIMPHI: impropers: got %s", line);
+    blade_log(buf);
+  }
   imprList.clear();
   imprList.reserve(imprCount);
   fgets(line, MAXLENGTHSTRING, fp);
@@ -445,8 +459,10 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Ignore donors
   fgets(line, MAXLENGTHSTRING, fp);
   j=io_nexti(line,fp,"psf number of donors");
-  snprintf(buf, sizeof(buf), "Reading PSF, expect !NDON: donors: got %s", line);
-  blade_log(buf);
+  if (system->verbose >= 1) {
+    snprintf(buf, sizeof(buf), "Reading PSF, expect !NDON: donors: got %s", line);
+    blade_log(buf);
+  }
   for (i=0; i<2*j; i++) {
     io_nexti(line,fp,"psf donor atom");
   }
@@ -454,8 +470,10 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Ignore acceptors
   fgets(line, MAXLENGTHSTRING, fp);
   j=io_nexti(line,fp,"psf number of acceptors");
-  snprintf(buf, sizeof(buf), "Reading PSF, expect !NACC: acceptors: got %s", line);
-  blade_log(buf);
+  if (system->verbose >= 1) {
+    snprintf(buf, sizeof(buf), "Reading PSF, expect !NACC: acceptors: got %s", line);
+    blade_log(buf);
+  }
   for (i=0; i<2*j; i++) {
     io_nexti(line,fp,"psf acceptor atom");
   }
@@ -463,8 +481,10 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Not even sure what this section is...
   fgets(line, MAXLENGTHSTRING, fp);
   j=io_nexti(line,fp,"psf nnb???");
-  snprintf(buf, sizeof(buf), "Reading PSF, expect !NNB: got %s", line);
-  blade_log(buf);
+  if (system->verbose >= 1) {
+    snprintf(buf, sizeof(buf), "Reading PSF, expect !NNB: got %s", line);
+    blade_log(buf);
+  }
   for (i=0; i<atomCount; i++) {
     io_nexti(line,fp,"psf nnb???");
   }
@@ -472,8 +492,10 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Or this one...
   fgets(line, MAXLENGTHSTRING, fp);
   j=io_nexti(line,fp,"psf ngrp???");
-  snprintf(buf, sizeof(buf), "Reading PSF, expect !NGRP NST2: got %s", line);
-  blade_log(buf);
+  if (system->verbose >= 1) {
+    snprintf(buf, sizeof(buf), "Reading PSF, expect !NGRP NST2: got %s", line);
+    blade_log(buf);
+  }
   for (i=0; i<3*j; i++) {
     io_nexti(line,fp,"psf ngrp???");
   }
@@ -482,8 +504,10 @@ void Structure::add_structure_psf_file(FILE *fp)
     // OR this one...
     fgets(line, MAXLENGTHSTRING, fp);
     j=io_nexti(line,fp,"psf molnt???");
-    snprintf(buf, sizeof(buf), "Reading PSF, expect !MOLNT: got %s", line);
-    blade_log(buf);
+    if (system->verbose >= 1) {
+      snprintf(buf, sizeof(buf), "Reading PSF, expect !MOLNT: got %s", line);
+      blade_log(buf);
+    }
     for (i=0; i<atomCount; i++) {
       io_nexti(line,fp,"psf molnt???");
     }
@@ -493,8 +517,10 @@ void Structure::add_structure_psf_file(FILE *fp)
   fgets(line, MAXLENGTHSTRING, fp);
   i=io_nexti(line,fp,"psf lone pairs");
   j=io_nexti(line,fp,"psf lone pair hosts");
-  snprintf(buf, sizeof(buf), "Reading PSF, expect !NUMLP NUMLPH: got %s", line);
-  blade_log(buf);
+  if (system->verbose >= 1) {
+    snprintf(buf, sizeof(buf), "Reading PSF, expect !NUMLP NUMLPH: got %s", line);
+    blade_log(buf);
+  }
   if (i!=0 || j!=0) {
     int virtCount;
     int virtHostCount;
@@ -561,8 +587,10 @@ void Structure::add_structure_psf_file(FILE *fp)
   if (headerInfo.count("CMAP")) {
     fgets(line, MAXLENGTHSTRING, fp);
     cmapCount=io_nexti(line,fp,"psf number of cmaps");
-    snprintf(buf, sizeof(buf), "Reading PSF, expect !NCRTERM: got %s", line);
-    blade_log(buf);
+    if (system->verbose >= 1) {
+      snprintf(buf, sizeof(buf), "Reading PSF, expect !NCRTERM: got %s", line);
+      blade_log(buf);
+    }
     cmapList.clear();
     cmapList.reserve(cmapCount);
     fgets(line, MAXLENGTHSTRING, fp);

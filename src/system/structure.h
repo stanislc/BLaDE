@@ -89,7 +89,7 @@ class Structure {
   void parse_harmonic(char *line,char *token,System *system);
   void parse_diRest(char *line,char *token,System *system);
   void dump(char *line,char *token,System *system);
-  void add_structure_psf_file(FILE *fp);
+  void add_structure_psf_file(FILE *fp, System *system);
 };
 
 void parse_structure(char *line,System *system);
