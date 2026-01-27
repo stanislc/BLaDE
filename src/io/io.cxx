@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include "main/defines.h"
+#include "main/blade_log.h"
 #include "system/system.h"
 
 // parse_whatever
@@ -27,11 +28,14 @@
 void fatal(const char* fnm,int i,const char* format, ...)
 {
   va_list args;
+  char buf[256];
 
   va_start(args,format);
-  fprintf(stdout,"FATAL ERROR:\n");
-  fprintf(stdout,"%s:%d\n",fnm,i);
-  vfprintf(stdout,format,args);
+  blade_log("FATAL ERROR:");
+  snprintf(buf, sizeof(buf), "%s:%d",fnm,i);
+  blade_log(buf);
+  vsnprintf(buf, sizeof(buf), format, args);
+  blade_log(buf);
   va_end(args);
 
   exit(1);
@@ -54,8 +58,10 @@ void arrested_development(System *system,int howLong) {
 FILE* fpopen(const char* fnm,const char* type)
 {
   FILE *fp;
+  char buf[256];
 
-  fprintf(stdout,"Opening file %s for %s\n",fnm,type);
+  snprintf(buf, sizeof(buf), "Opening file %s for %s",fnm,type);
+  blade_log(buf);
   fp=fopen(fnm,type);
   if (fp==NULL) {
     fatal(__FILE__,__LINE__,"Error: Unable to open file %s\n",fnm);
@@ -278,7 +284,9 @@ void interpretter(const char *fnm,System *system)
   fgetpos(fp,&system->control[level-1].fp_pos);
   // fsetpos(fp,&fp_pos);
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
-    fprintf(stdout,"IN%d> %s",level,line);
+    char buf[256];
+    snprintf(buf, sizeof(buf), "IN%d> %s",level,line);
+    blade_log(buf);
     system->variables->substitute(line);
     io_nexta(line,token);
     system->parse_system(line,token,system);
@@ -366,11 +374,13 @@ void display_nrg(System *system)
 {
   real_e *e=system->state->energy;
   int i;
+  char buf[256];
+  int offset = 0;
 
   for (i=0; i<eeend; i++) {
-    fprintf(stdout," %12.4f",e[i]);
+    offset += snprintf(buf + offset, sizeof(buf) - offset, " %12.4f",e[i]);
   }
-  fprintf(stdout,"\n");
+  blade_log(buf);
 }
 
 void print_dynamics_output(int step,System *system)
