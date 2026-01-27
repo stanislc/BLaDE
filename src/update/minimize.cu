@@ -132,22 +132,28 @@ void State::min_move(int step,int nsteps,System *system)
         fatal(__FILE__,__LINE__,"BLaDE minimization: energy is NaN or Inf at step %d. Check structure or parameters.",step);
       }
 
-      // Compute deltaE before updating prevEnergy
-      real_e deltaE = currEnergy - prevEnergy;
-
       if (step==0) {
         r->dxRMS=r->dxRMSInit;
-      } else {
-        // Adaptive damping: always halve first, then conditionally increase
-        r->dxRMS*=0.5;
-        if (currEnergy<prevEnergy) {
-          r->dxRMS*=2.4; // scale factor for energy decrease
-        }
-        // Cap dxRMS to prevent unbounded growth (10x initial value)
-        if (r->dxRMS > 10.0 * r->dxRMSInit) {
-          r->dxRMS = 10.0 * r->dxRMSInit;
-        }
       }
+      // Adaptive step size: halve first, then conditionally increase
+      // Net 1.2x when energy decreases, 0.5x when increases
+      r->dxRMS*=0.5;
+      if (step>0 && currEnergy<prevEnergy) {
+        r->dxRMS*=2.4;
+      }
+      // Detect stalled minimization (energy unchanged) - apply extra damping
+      if (step>0 && currEnergy==prevEnergy) {
+        r->dxRMS*=0.5;
+        char buf[256];
+        snprintf(buf, sizeof(buf), "WARNING: Energy unchanged at step %d, applying extra damping\n", step);
+        blade_log(buf);
+      }
+      // Cap dxRMS to prevent unbounded growth (max 10x initial value)
+      if (r->dxRMS > 10.0 * r->dxRMSInit) {
+        r->dxRMS = 10.0 * r->dxRMSInit;
+      }
+      // Compute deltaE BEFORE updating prevEnergy (for MINI> output)
+      real_e deltaE = (step > 0) ? currEnergy - prevEnergy : 0.0;
       prevEnergy=currEnergy;
       sd_acceleration_kernel<<<(3*atomCount+BLUP-1)/BLUP,BLUP,
         0,r->updateStream>>>(3*atomCount,*leapState);
@@ -185,9 +191,10 @@ void State::min_move(int step,int nsteps,System *system)
         blade_log(buf);
       }
       // decrease scaling factor if actual max violates allowed max
+      // Only apply rescaling to current step's scaling, not persistently to dxRMS
+      // (persistent dxRMS modification causes step size to collapse to zero)
       if (rescaling<1) {
         scaling*=rescaling;
-        r->dxRMS*=rescaling;
       }
       sd_position_kernel<<<(3*atomCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>
         (3*atomCount,*leapState,leapState->v,scaling,positionCons_d);
@@ -204,12 +211,24 @@ void State::min_move(int step,int nsteps,System *system)
         fatal(__FILE__,__LINE__,"BLaDE minimization (SDFD): energy is NaN or Inf at step %d. Check structure or parameters.",step);
       }
 
-      // Compute deltaE before updating prevEnergy
-      real_e deltaE = currEnergy - prevEnergy;
-
       if (step==0) {
-        r->dxRMS=r->dxRMSInit;
+        // Apply initial damping for first step stability
+        r->dxRMS=r->dxRMSInit*0.5;
+        prevEnergy=currEnergy;
       }
+      // Detect stalled minimization (energy unchanged) - apply extra damping
+      if (step>0 && currEnergy==prevEnergy) {
+        r->dxRMS*=0.5;
+        char buf[256];
+        snprintf(buf, sizeof(buf), "WARNING (SDFD): Energy unchanged at step %d, applying extra damping\n", step);
+        blade_log(buf);
+      }
+      // Cap dxRMS to prevent unbounded growth (max 10x initial value)
+      if (r->dxRMS > 10.0 * r->dxRMSInit) {
+        r->dxRMS = 10.0 * r->dxRMSInit;
+      }
+      // Compute deltaE BEFORE updating prevEnergy (for MINI> output)
+      real_e deltaE = (step > 0) ? currEnergy - prevEnergy : 0.0;
       prevEnergy=currEnergy;
 
       sd_acceleration_kernel<<<(3*atomCount+BLUP-1)/BLUP,BLUP,
@@ -249,9 +268,10 @@ void State::min_move(int step,int nsteps,System *system)
         blade_log(buf);
       }
       // decrease scaling factor if actual max violates allowed max
+      // Only apply rescaling to current step's scaling, not persistently to dxRMS
+      // (persistent dxRMS modification causes step size to collapse to zero)
       if (rescaling<1) {
         scaling*=rescaling;
-        r->dxRMS*=rescaling;
       }
       backup_position();
       sd_position_kernel<<<(3*atomCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>
