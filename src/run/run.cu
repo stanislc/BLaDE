@@ -2,6 +2,7 @@
 #include <cuda_runtime.h>
 #include <string.h>
 #include <signal.h>
+#include <limits.h>
 
 #include "run/run.h"
 #include "main/blade_log.h"
@@ -47,6 +48,13 @@ static void blade_sigint_handler(int signum) {
 #include <mpi.h>
 #endif
 
+static int run_step_to_int(long int step)
+{
+  if (step>INT_MAX || step<INT_MIN) {
+    fatal(__FILE__,__LINE__,"BLaDE step %ld is outside int range\n",step);
+  }
+  return (int)step;
+}
 
 static void set_scan_algorithm(Run *run,int algorithm)
 {
@@ -645,7 +653,7 @@ void Run::minimize(char *line,char *token,System *system)
     system->domdec->update_domdec(system,true); // true to always update neighbor list
     system->potential->calc_force(0,system); // step 0 to always calculate energy
     system->state->min_move(step,nsteps,system);
-    print_dynamics_output(step,system);
+    print_dynamics_output(run_step_to_int(step),system);
     gpuCheck(cudaPeekAtLastError());
   }
 
@@ -677,14 +685,14 @@ void Run::dynamics(char *line,char *token,System *system)
     }
     if (system->verbose>0) {
       char buf[256];
-      snprintf(buf, sizeof(buf), "Step %d\n", step);
+      snprintf(buf, sizeof(buf), "Step %d\n", run_step_to_int(step));
       blade_log(buf);
     }
     system->domdec->update_domdec(system,(step%system->domdec->freqDomdec)==0);
     system->potential->calc_force(step,system);
     system->state->update(step,system);
 #warning "Need to copy coordinates before update"
-    print_dynamics_output(step,system);
+    print_dynamics_output(run_step_to_int(step),system);
     gpuCheck(cudaPeekAtLastError());
   }
   t2=clock();
